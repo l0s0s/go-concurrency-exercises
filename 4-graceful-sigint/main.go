@@ -13,10 +13,38 @@
 
 package main
 
-func main() {
-	// Create a process
-	proc := MockProcess{}
+import (
+	"context"
+	"os"
+	"os/signal"
+)
 
-	// Run the process (blocking)
-	proc.Run()
+func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	singnalFn := func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		<-c
+		cancel()
+	}
+
+	go singnalFn()
+
+	proc := MockProcess{}
+	// Create a process
+	go func() {
+		// Run the process (blocking)
+		proc.Run()
+	} ()
+	
+	<-ctx.Done()
+	
+	go proc.Stop()
+	
+	ctx, cancel = context.WithCancel(context.Background())
+	
+	go singnalFn()
+	
+	<-ctx.Done()
 }
