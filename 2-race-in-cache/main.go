@@ -29,7 +29,7 @@ type page struct {
 
 // KeyStoreCache is a LRU cache for string key-value pairs
 type KeyStoreCache struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 	cache map[string]*list.Element
 	pages list.List
 	load  func(string) string
