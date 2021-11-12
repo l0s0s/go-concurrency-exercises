@@ -47,3 +47,18 @@ Found 3 data race(s)
 
 * [https://www.mailgun.com/blog/golangs-superior-cache-solution-memcached-redis/](https://www.mailgun.com/blog/golangs-superior-cache-solution-memcached-redis/)
 * [https://allegro.tech/2016/03/writing-fast-cache-service-in-go.html](https://allegro.tech/2016/03/writing-fast-cache-service-in-go.html)
+
+### Benchmark 
+#   With Mutex
+```
+    BenchmarkCache-4   	     100	2026091816 ns/op	   29910 B/op	    1745 allocs/op
+    PASS
+    ok  	github.com/l0s0s/go-concurrency-exercises/race	208.717s
+```
+
+#   With RWMutex
+```
+    BenchmarkCache-4   	     100	2026300692 ns/op	   29884 B/op	    1745 allocs/op
+    PASS
+    ok  	github.com/l0s0s/go-concurrency-exercises/raceRW	208.737s
+```
