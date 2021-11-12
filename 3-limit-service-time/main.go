@@ -11,7 +11,6 @@
 package main
 
 import (
-	"context"
 	"time"
 )
 
@@ -23,23 +22,22 @@ type User struct {
 	TimeUsed  int64 // in seconds
 }
 
+var Users []User
+
 // HandleRequest runs the processes requested by users. Returns false
 // if process had to be killed
 func HandleRequest(process func(), u *User) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second * 10)
-	defer cancel()
+	if u.TimeUsed >= 10 {
+		return false
+	}
+	
+	timestamp := time.Now().Unix()
 	
 	process()
 	
-	return func() bool {
-		select{
-		case <- ctx.Done():
-			return false
+	u.TimeUsed = time.Now().Unix() - timestamp 
 
-		default:
-			return true
-		}
-	} ()
+	return u.TimeUsed < 10
 }
 
 func main() {
