@@ -22,8 +22,6 @@ type User struct {
 	TimeUsed  int64 // in seconds
 }
 
-var Users []User
-
 // HandleRequest runs the processes requested by users. Returns false
 // if process had to be killed
 func HandleRequest(process func(), u *User) bool {
