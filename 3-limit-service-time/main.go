@@ -25,6 +25,10 @@ type User struct {
 // HandleRequest runs the processes requested by users. Returns false
 // if process had to be killed
 func HandleRequest(process func(), u *User) bool {
+	if u.IsPremium {
+		return true
+	}
+	
 	if u.TimeUsed >= 10 {
 		return false
 	}
@@ -34,7 +38,7 @@ func HandleRequest(process func(), u *User) bool {
 	process()
 	
 	u.TimeUsed = time.Duration(time.Now().Unix() - timestamp.Unix())
-
+	
 	return u.TimeUsed < 10
 }
 
