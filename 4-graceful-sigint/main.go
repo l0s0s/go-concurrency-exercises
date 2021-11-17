@@ -14,22 +14,14 @@
 package main
 
 import (
-	"context"
 	"os"
 	"os/signal"
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	singnalFn := func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		<-c
-		cancel()
-	}
-
-	go singnalFn()
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	
 
 	proc := MockProcess{}
 	// Create a process
@@ -38,13 +30,9 @@ func main() {
 		proc.Run()
 	} ()
 	
-	<-ctx.Done()
-	
+	<- c
+
 	go proc.Stop()
-	
-	ctx, cancel = context.WithCancel(context.Background())
-	
-	go singnalFn()
-	
-	<-ctx.Done()
+
+	<- c
 }
