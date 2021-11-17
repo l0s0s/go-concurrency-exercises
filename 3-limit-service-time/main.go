@@ -19,7 +19,7 @@ import (
 type User struct {
 	ID        int
 	IsPremium bool
-	TimeUsed  int64 // in seconds
+	TimeUsed  time.Duration // in seconds
 }
 
 // HandleRequest runs the processes requested by users. Returns false
@@ -29,11 +29,11 @@ func HandleRequest(process func(), u *User) bool {
 		return false
 	}
 	
-	timestamp := time.Now().Unix()
+	timestamp := time.Now()
 	
 	process()
 	
-	u.TimeUsed = time.Now().Unix() - timestamp 
+	u.TimeUsed = time.Duration(time.Now().Unix() - timestamp.Unix())
 
 	return u.TimeUsed < 10
 }
