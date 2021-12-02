@@ -18,18 +18,21 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"log"
+	"sync"
 	"time"
+
+	"github.com/ReneKroon/ttlcache"
 )
 
 // SessionManager keeps track of all sessions from creation, updating
 // to destroying.
 type SessionManager struct {
 	sessions map[string]Session
+	mu sync.Mutex
+	cache *ttlcache.Cache 
 }
-
 
 // Session stores the session's data
 type Session struct {
@@ -39,40 +42,42 @@ type Session struct {
 
 // NewSessionManager creates a new sessionManager
 func NewSessionManager() *SessionManager {
+	cache := ttlcache.NewCache()
+
 	m := &SessionManager{
 		sessions: make(map[string]Session),
+		cache: cache,
 	}
 
+	cache.SetCheckExpirationCallback(func(key string, value interface{}) bool {
+		select {
+		case <- m.sessions[key].isUpdate:
+			return false
+		default:
+			return true
+		}
+	})
+	
+	cache.SetExpirationCallback(func (key string, value interface{}) {
+		delete(m.sessions, key)
+	})
+	cache.SetTTL(time.Second*5)
 	return m
 }
 
 // CreateSession creates a new session and returns the sessionID
 func (m *SessionManager) CreateSession() (string, error) {
-	
 	sessionID, err := MakeSessionID()
 	if err != nil {
 		return "", err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	m.cache.Set(sessionID, 0)
 
 	m.sessions[sessionID] = Session{
 		Data: make(map[string]interface{}),
 		isUpdate: make(chan struct{}, 1),
 	}
-
-	go func() {
-		defer cancel()
-		
-		for {
-			select {
-			case <-ctx.Done():
-				delete(m.sessions, sessionID)
-			case <- m.sessions[sessionID].isUpdate:
-				ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
-			}
-		}
-	}()
 
 	return sessionID, nil
 }
@@ -93,17 +98,20 @@ func (m *SessionManager) GetSessionData(sessionID string) (map[string]interface{
 
 // UpdateSessionData overwrites the old session data with the new one
 func (m *SessionManager) UpdateSessionData(sessionID string, data map[string]interface{}) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	_, ok := m.sessions[sessionID]
 	if !ok {
 		return ErrSessionNotFound
 	}
 
-	m.sessions[sessionID].isUpdate <- struct{}{}
 	// Hint: you should renew expiry of the session here
 	m.sessions[sessionID] = Session{
 		Data: data,
 		isUpdate: make(chan struct{}, 1),
 	}
+	
+	m.sessions[sessionID].isUpdate <- struct{}{}
 
 	return nil
 }
