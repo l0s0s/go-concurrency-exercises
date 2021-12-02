@@ -59,6 +59,9 @@ func NewSessionManager() *SessionManager {
 	})
 	
 	cache.SetExpirationCallback(func (key string, value interface{}) {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+
 		delete(m.sessions, key)
 	})
 	cache.SetTTL(time.Second*5)
@@ -110,7 +113,7 @@ func (m *SessionManager) UpdateSessionData(sessionID string, data map[string]int
 		Data: data,
 		isUpdate: make(chan struct{}, 1),
 	}
-	
+
 	m.sessions[sessionID].isUpdate <- struct{}{}
 
 	return nil
