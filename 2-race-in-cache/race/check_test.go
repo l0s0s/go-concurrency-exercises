@@ -4,7 +4,7 @@
 // Your task is to edit `main.go`
 //
 
-package main
+package race
 
 import (
 	"strconv"
@@ -12,7 +12,7 @@ import (
 )
 
 func TestMain(t *testing.T) {
-	cache := run()
+	cache := Run()
 
 	cacheLen := len(cache.cache)
 	pagesLen := cache.pages.Len()
@@ -43,4 +43,11 @@ func TestLRU(t *testing.T) {
 		t.Errorf("0 evicted incorrectly: %v", cache.cache)
 	}
 
+}
+
+func BenchmarkCache(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		Run()
+	}
 }
