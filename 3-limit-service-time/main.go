@@ -10,19 +10,36 @@
 
 package main
 
+import (
+	"time"
+)
+
 // User defines the UserModel. Use this to check whether a User is a
 // Premium user or not
 type User struct {
 	ID        int
 	IsPremium bool
-	TimeUsed  int64 // in seconds
+	TimeUsed  time.Duration // in seconds
 }
 
 // HandleRequest runs the processes requested by users. Returns false
 // if process had to be killed
 func HandleRequest(process func(), u *User) bool {
+	if u.IsPremium {
+		return true
+	}
+	
+	if u.TimeUsed >= 10 {
+		return false
+	}
+	
+	timestamp := time.Now()
+	
 	process()
-	return true
+	
+	u.TimeUsed = time.Duration(time.Now().Unix() - timestamp.Unix())
+	
+	return u.TimeUsed < 10
 }
 
 func main() {
