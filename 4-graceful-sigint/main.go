@@ -13,10 +13,29 @@
 
 package main
 
-func main() {
-	// Create a process
-	proc := MockProcess{}
+import (
+	"os"
+	"os/signal"
+)
 
-	// Run the process (blocking)
-	proc.Run()
+func main() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	
+
+	proc := MockProcess{}
+	// Create a process
+	go func() {
+		// Run the process (blocking)
+		proc.Run()
+	} ()
+	
+	<- c
+
+	go func() {
+		<-c
+		os.Exit(1)
+	} ()
+
+	proc.Stop()
 }
