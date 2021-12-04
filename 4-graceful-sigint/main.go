@@ -32,7 +32,10 @@ func main() {
 	
 	<- c
 
-	go proc.Stop()
+	go func() {
+		<-c
+		os.Exit(1)
+	} ()
 
-	<- c
+	proc.Stop()
 }
