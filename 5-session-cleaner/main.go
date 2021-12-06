@@ -19,29 +19,52 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/ReneKroon/ttlcache"
 )
 
 // SessionManager keeps track of all sessions from creation, updating
 // to destroying.
 type SessionManager struct {
 	sessions map[string]Session
+	mu sync.Mutex
+	cache *ttlcache.Cache 
 }
 
 // Session stores the session's data
 type Session struct {
 	Data map[string]interface{}
+	isUpdate chan struct{}
 }
 
 // NewSessionManager creates a new sessionManager
 func NewSessionManager() *SessionManager {
+	cache := ttlcache.NewCache()
+
 	m := &SessionManager{
 		sessions: make(map[string]Session),
+		cache: cache,
 	}
 
+	cache.SetCheckExpirationCallback(func(key string, value interface{}) bool {
+		select {
+		case <- m.sessions[key].isUpdate:
+			return false
+		default:
+			return true
+		}
+	})
+	
+	cache.SetExpirationCallback(func (key string, value interface{}) {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+
+		delete(m.sessions, key)
+	})
+	cache.SetTTL(time.Second*5)
 	return m
 }
 
@@ -52,8 +75,11 @@ func (m *SessionManager) CreateSession() (string, error) {
 		return "", err
 	}
 
+	m.cache.Set(sessionID, 0)
+
 	m.sessions[sessionID] = Session{
 		Data: make(map[string]interface{}),
+		isUpdate: make(chan struct{}, 1),
 	}
 
 	return sessionID, nil
@@ -75,9 +101,8 @@ func (m *SessionManager) GetSessionData(sessionID string) (map[string]interface{
 
 // UpdateSessionData overwrites the old session data with the new one
 func (m *SessionManager) UpdateSessionData(sessionID string, data map[string]interface{}) error {
-	var mu sync.Mutex
-	mu.Lock()
-	defer mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	_, ok := m.sessions[sessionID]
 	if !ok {
 		return ErrSessionNotFound
@@ -86,18 +111,10 @@ func (m *SessionManager) UpdateSessionData(sessionID string, data map[string]int
 	// Hint: you should renew expiry of the session here
 	m.sessions[sessionID] = Session{
 		Data: data,
+		isUpdate: make(chan struct{}, 1),
 	}
-	
-	go func(data map[string]interface{}) {
-		time.Sleep(time.Second*5)
-		fmt.Println("TEST")
-		if fmt.Sprint(data) == fmt.Sprint(m.sessions[sessionID].Data) {
-			m.sessions[sessionID] = Session{
-				Data: nil,
-			}
-		} 
-		
-	}(data)
+
+	m.sessions[sessionID].isUpdate <- struct{}{}
 
 	return nil
 }
